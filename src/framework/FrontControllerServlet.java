@@ -21,12 +21,12 @@ public class FrontControllerServlet extends HttpServlet{
                 String pathInfo = requestURI.substring(contextPath.length());
 
                 if (pathInfo.equals("/") || pathInfo.isEmpty()){
-                    pathInfo = "Aucune valeur apres l'URL de base";
+                    pathInfo = "";
                 }else{
                     pathInfo = pathInfo.substring(1);
                 }
 
-                out.println("<h1> La valeur recuperee apres l'URL de base est:" + pathInfo + "</h1>");
+                out.println("<h3>" + pathInfo + "</h3>");
             }
         }
 
