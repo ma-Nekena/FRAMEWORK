@@ -10,7 +10,9 @@ rm -f mon-framework.jar
 TOMCAT_SERVLET_API="/Users/rotsy/Documents/TOMCAT/lib/servlet-api.jar" 
 
 echo "Compilation des sources du Framework..."
-javac -d bin -cp "$TOMCAT_SERVLET_API" src/framework/FrontControllerServlet.java
+find src -name "*.java" > sources.txt
+javac -d bin -cp "$TOMCAT_SERVLET_API" @sources.txt
+rm sources.txt
 
 if [ $? -eq 0 ]; then
     echo "[FRAMEWORK] Compilation réussie. Création du fichier .jar..."
