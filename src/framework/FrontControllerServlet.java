@@ -1,5 +1,6 @@
 package framework;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import jakarta.servlet.ServletException;
@@ -15,10 +16,19 @@ public class FrontControllerServlet extends HttpServlet{
 
             try (PrintWriter out = response.getWriter()){
                 String requestURI = request.getRequestURI();
-
                 String contextPath = request.getContextPath();
-
                 String pathInfo = requestURI.substring(contextPath.length());
+
+                String realPath = getServletContext().getRealPath(pathInfo);
+
+                if(realPath != null){
+                    File file = new File(realPath);
+
+                    if(file.exists() && file.isFile()){
+                        getServletContext().getNamedDispatcher("default").forward(request,response);
+                        return;
+                    }
+                }
 
                 if (pathInfo.equals("/") || pathInfo.isEmpty()){
                     pathInfo = "";
