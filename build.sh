@@ -8,6 +8,7 @@ rm -f mon-framework.jar
 # 2. Chemin vers l'API Servlet de Tomcat (À adapter selon ton installation)
 # Par exemple: "/opt/tomcat/lib/servlet-api.jar" ou "/usr/local/Cellar/tomcat/..."
 TOMCAT_SERVLET_API="/Users/rotsy/Documents/TOMCAT/lib/servlet-api.jar" 
+# TOMCAT_SERVLET_API="/home/itu/TOMCAT/lib/servlet-api.jar" 
 
 echo "Compilation des sources du Framework..."
 find src -name "*.java" > sources.txt
@@ -16,8 +17,8 @@ rm sources.txt
 
 if [ $? -eq 0 ]; then
     echo "[FRAMEWORK] Compilation réussie. Création du fichier .jar..."
-    jar cf framework-sprit0.jar -C bin .
-    echo "[FRAMEWORK] framework-sprit0.jar généré avec succès."
+    jar cf framework-nekena.jar -C bin .
+    echo "[FRAMEWORK] framework-nekena.jar généré avec succès."
 else
     echo "[FRAMEWORK] Erreur lors de la compilation."
     exit 1
