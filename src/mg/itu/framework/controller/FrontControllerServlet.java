@@ -162,6 +162,34 @@ public class FrontControllerServlet extends HttpServlet {
                 out.println("<h3>Tableau de toutes les routes de l'application :</h3>");
                 HtmlViewHelper.afficherTableauRoutes(out, urlMapping);
 
+            } else if (urlMapping.containsKey(currentKey)) { 
+                Mapping target = urlMapping.get(currentKey);
+
+                try {
+                    Class<?> clazz = Class.forName(target.getClassName());
+                    Object controllerInstance = clazz.getDeclaredConstructor().newInstance();
+                    java.lang.reflect.Method method = clazz.getDeclaredMethod(target.getMethod());
+
+                    method.invoke(controllerInstance);
+
+                    out.println("<h2 style='color:green;'>✔ URL et méthode HTTP supportées !</h2>");
+                    out.println("<p><strong>URL :</strong> " + lookupPath + "</p>");
+                    out.println("<p><strong>Méthode HTTP :</strong> " + currentMethod + "</p>");
+                    out.println("<p><strong>Classe exécutée :</strong> " + target.getClassName() + "</p>");
+                    out.println("<p><strong>Fonction invoquée :</strong> " + target.getMethod() + "()</p>");
+                } catch (Exception e) {
+                    out.println("<h2 style='color:red;'>❌ Erreur lors de l'exécution de la méthode</h2>");
+                    out.println("<pre>");
+
+                    if (e instanceof java.lang.reflect.InvocationTargetException && e.getCause() != null) {
+                        out.println("<strong>Cause réelle :</strong> " + e.getCause());
+                        e.getCause().printStackTrace(out);
+                    } else {
+                        e.printStackTrace(out);
+                    }
+                    out.println("</pre>");
+                }
+
             } else {
                 out.println("<h2> l'url [" + currentMethod + "] n'est pas supportee pour " + lookupPath + " </h2>");
                 out.println("<p> Voici les url validées : </p>");
