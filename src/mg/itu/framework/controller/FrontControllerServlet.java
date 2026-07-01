@@ -4,6 +4,7 @@ import mg.itu.framework.annotation.controller.Controller;
 import mg.itu.framework.util.PackageScanner;
 import mg.itu.framework.annotation.controller.UrlMapping;
 import mg.itu.framework.util.Mapping;
+import mg.itu.framework.util.UrlKey;
 import mg.itu.framework.util.HtmlViewHelper; 
 
 import java.io.File;
@@ -16,11 +17,12 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.HashMap;
+import java.util.Map;
 
 public class FrontControllerServlet extends HttpServlet {
 
     private List<String> listeController = new ArrayList<>();
-    private HashMap<String, Mapping> urlMapping = new HashMap<>();
+    private Map<UrlKey, Mapping> urlMapping = new HashMap<>();
 
     @Override
     public void init() throws ServletException {
@@ -49,9 +51,22 @@ public class FrontControllerServlet extends HttpServlet {
                             if (method.isAnnotationPresent(UrlMapping.class)) {
                                 UrlMapping annotation = method.getAnnotation(UrlMapping.class);
                                 String url = annotation.value();
+                                String httpMethod = annotation.method(); 
 
+                                UrlKey key = new UrlKey(url, httpMethod);
                                 Mapping mapping = new Mapping(cls.getName(), method.getName());
-                                urlMapping.put(url, mapping);
+                                
+                                if (urlMapping.containsKey(key)) {
+                                    Mapping conflit = urlMapping.get(key);
+                                    throw new ServletException(
+                                        " [ERREUR DUBLON] L'URL '" + url + "' avec la méthode [" + httpMethod + "] " +
+                                        "est déjà déclarée dans la classe " + conflit.getClassName() + 
+                                        " (méthode: " + conflit.getMethod() + "()). " +
+                                        "Impossible de la redéclarer dans " + cls.getName() + "." + method.getName() + "() !"
+                                    );
+                                } else {
+                                    urlMapping.put(key, mapping);
+                                }
                             }
                         }
                     }
@@ -72,16 +87,32 @@ public class FrontControllerServlet extends HttpServlet {
                             if (method.isAnnotationPresent(UrlMapping.class)) {
                                 UrlMapping annotation = method.getAnnotation(UrlMapping.class);
                                 String url = annotation.value();
+                                String httpMethod = annotation.method();
 
+                                UrlKey key = new UrlKey(url, httpMethod);
                                 Mapping mapping = new Mapping(cls.getName(), method.getName());
-                                urlMapping.put(url, mapping);
+                                
+                                if (urlMapping.containsKey(key)) {
+                                    Mapping conflit = urlMapping.get(key);
+                                    throw new ServletException(
+                                        " [ERREUR DUBLON] L'URL '" + url + "' avec la méthode [" + httpMethod + "] " +
+                                        "est déjà déclarée dans la classe " + conflit.getClassName() + 
+                                        " (méthode: " + conflit.getMethod() + "()). " +
+                                        "Impossible de la redéclarer dans " + cls.getName() + "." + method.getName() + "() !"
+                                    );
+                                } else {
+                                    urlMapping.put(key, mapping);
+                                }
                             }
                         }
                     }
                 }
             }
+        } catch (ServletException e) {
+            throw e; 
         } catch (Exception e) {
             e.printStackTrace();
+            throw new ServletException(e);
         }
     }
 
@@ -105,6 +136,8 @@ public class FrontControllerServlet extends HttpServlet {
         try (PrintWriter out = response.getWriter()) {
             
             String lookupPath = pathInfo; 
+            String currentMethod = request.getMethod();
+            UrlKey currentKey = new UrlKey(lookupPath, currentMethod);
 
             if (pathInfo.equals("/") || pathInfo.isEmpty()) {
                 pathInfo = "";
@@ -112,7 +145,7 @@ public class FrontControllerServlet extends HttpServlet {
                 pathInfo = pathInfo.substring(1);
             }
 
-            out.println("<h3>" + pathInfo + "</h3>");
+            out.println("<h3> URL demandee: " + pathInfo + "[" + currentMethod + "]</h3>");
 
             out.println("<h2>Liste des Contrôleurs détectés au démarrage :</h2>");
             if (listeController.isEmpty()) {
@@ -126,19 +159,12 @@ public class FrontControllerServlet extends HttpServlet {
             }
 
             if (lookupPath.equals("/") || lookupPath.isEmpty()) {
-                out.println(" ");
-
-            } else if (urlMapping.containsKey(lookupPath)) {
-                Mapping target = urlMapping.get(lookupPath);
-
-                out.println("<h2> url supporté !</h2>");
-                out.println("<p> url : " + lookupPath + "</p>");
-                out.println("<p> class : " + target.getClassName() + "</p>");
-                out.println("<p> methode : " + target.getMethod() + "</p>");
+                out.println("<h3>Tableau de toutes les routes de l'application :</h3>");
+                HtmlViewHelper.afficherTableauRoutes(out, urlMapping);
 
             } else {
-                out.println("<h2> l'url n'est pas supporté : " + lookupPath + "</h2>");
-                out.println("<p> Voici les url validés : </p>");
+                out.println("<h2> l'url [" + currentMethod + "] n'est pas supportee pour " + lookupPath + " </h2>");
+                out.println("<p> Voici les url validées : </p>");
                 HtmlViewHelper.afficherTableauRoutes(out, urlMapping);
             }
         }
