@@ -7,7 +7,6 @@ import java.util.Map;
 
 public class HtmlViewHelper {
 
-    // Vérifie bien que c'veut est Map<UrlKey, Mapping> ici :
     public static void afficherTableauRoutes(PrintWriter out, Map<UrlKey, Mapping> urlMapping) {
         if (urlMapping == null || urlMapping.isEmpty()) {
             out.println("<p style='color:orange;'>Aucune route enregistrée.</p>");
@@ -17,7 +16,7 @@ public class HtmlViewHelper {
             for (UrlKey key : urlMapping.keySet()) {
                 Mapping m = urlMapping.get(key);
                 out.println("<tr>");
-                // Correction ici : ajout des parenthèses () pour appeler les méthodes
+
                 out.println("<td><strong>" + key.getUrl() + "</strong></td>");
                 out.println("<td><span style='color:blue; font-weight:bold;'>" + key.getMethod() + "</span></td>");
                 out.println("<td>" + m.getClassName() + "</td>");
