@@ -18,102 +18,25 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.HashMap;
 import java.util.Map;
+import jakarta.servlet.ServletContext;
 
 public class FrontControllerServlet extends HttpServlet {
 
     private List<String> listeController = new ArrayList<>();
     private Map<UrlKey, Mapping> urlMapping = new HashMap<>();
 
+@SuppressWarnings("unchecked")
     @Override
     public void init() throws ServletException {
         super.init();
-        urlMapping.clear();
-        listeController.clear();
-        try {
-            String packageToScan = getInitParameter("packageScan");
-            String basePath = getServletContext().getRealPath("/WEB-INF/classes");
-
-            if (basePath != null && packageToScan != null && !packageToScan.trim().isEmpty()) {
-                String packagePath = packageToScan.replace('.', '/');
-                File rootDir = new File(basePath + "/" + packagePath);
-                
-                List<Class<?>> allPrunedClasses = PackageScanner.scan(rootDir, packageToScan);
-
-                for (Class<?> cls : allPrunedClasses) {
-                    if (cls.isAnnotationPresent(Controller.class)) {
-                        String simpleName = cls.getSimpleName();
-                        if (!listeController.contains(simpleName)) {
-                            listeController.add(simpleName);
-                        }
-
-                        java.lang.reflect.Method[] methods = cls.getDeclaredMethods();
-                        for (java.lang.reflect.Method method : methods) {
-                            if (method.isAnnotationPresent(UrlMapping.class)) {
-                                UrlMapping annotation = method.getAnnotation(UrlMapping.class);
-                                String url = annotation.value();
-                                String httpMethod = annotation.method(); 
-
-                                UrlKey key = new UrlKey(url, httpMethod);
-                                Mapping mapping = new Mapping(cls.getName(), method.getName());
-                                
-                                if (urlMapping.containsKey(key)) {
-                                    Mapping conflit = urlMapping.get(key);
-                                    throw new ServletException(
-                                        " [ERREUR DUBLON] L'URL '" + url + "' avec la méthode [" + httpMethod + "] " +
-                                        "est déjà déclarée dans la classe " + conflit.getClassName() + 
-                                        " (méthode: " + conflit.getMethod() + "()). " +
-                                        "Impossible de la redéclarer dans " + cls.getName() + "." + method.getName() + "() !"
-                                    );
-                                } else {
-                                    urlMapping.put(key, mapping);
-                                }
-                            }
-                        }
-                    }
-                }
-            } else if (basePath != null) {
-                File rootDir = new File(basePath);
-                List<Class<?>> allPrunedClasses = PackageScanner.scan(rootDir, "");
-                
-                for (Class<?> cls : allPrunedClasses) {
-                    if (cls.isAnnotationPresent(Controller.class)) {
-                        String simpleName = cls.getSimpleName();
-                        if (!listeController.contains(simpleName)) {
-                            listeController.add(simpleName);
-                        }
-
-                        java.lang.reflect.Method[] methods = cls.getDeclaredMethods();
-                        for (java.lang.reflect.Method method : methods) {
-                            if (method.isAnnotationPresent(UrlMapping.class)) {
-                                UrlMapping annotation = method.getAnnotation(UrlMapping.class);
-                                String url = annotation.value();
-                                String httpMethod = annotation.method();
-
-                                UrlKey key = new UrlKey(url, httpMethod);
-                                Mapping mapping = new Mapping(cls.getName(), method.getName());
-                                
-                                if (urlMapping.containsKey(key)) {
-                                    Mapping conflit = urlMapping.get(key);
-                                    throw new ServletException(
-                                        " [ERREUR DUBLON] L'URL '" + url + "' avec la méthode [" + httpMethod + "] " +
-                                        "est déjà déclarée dans la classe " + conflit.getClassName() + 
-                                        " (méthode: " + conflit.getMethod() + "()). " +
-                                        "Impossible de la redéclarer dans " + cls.getName() + "." + method.getName() + "() !"
-                                    );
-                                } else {
-                                    urlMapping.put(key, mapping);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (ServletException e) {
-            throw e; 
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new ServletException(e);
-        }
+        
+        ServletContext context = getServletContext();
+        
+        this.urlMapping = (Map<UrlKey, Mapping>) context.getAttribute("urlMapping");
+        this.listeController = (List<String>) context.getAttribute("listeController");
+        
+        if (this.urlMapping == null) this.urlMapping = new HashMap<>();
+        if (this.listeController == null) this.listeController = new ArrayList<>();
     }
 
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
