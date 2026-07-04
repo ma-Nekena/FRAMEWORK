@@ -39,8 +39,7 @@ public class ContextListener implements ServletContextListener {
             context.setAttribute("listeController", listeController);
 
         } catch (Exception e) {
-            // On lève une RuntimeException pour stopper net le déploiement de Tomcat en cas de doublon
-            throw new RuntimeException(e.getMessage(), e);
+            context.setAttribute("INIT_ERROR", e.getMessage());
         }
     }
 

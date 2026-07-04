@@ -41,6 +41,14 @@ public class FrontControllerServlet extends HttpServlet {
 
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+
+        ServletContext context = getServletContext();
+        String initError = (String) context.getAttribute("INIT_ERROR");
+
+        if (initError != null) {
+            response.sendError(505, "Framework Init Error: " + initError);
+            return; 
+        }
         
         String requestURI = request.getRequestURI();
         String contextPath = request.getContextPath();
