@@ -23,6 +23,15 @@ public class ContextListener implements ServletContextListener {
         List<String> listeController = new ArrayList<>();
         Map<UrlKey, Mapping> urlMapping = new HashMap<>();
 
+        String prefix = context.getInitParameter("prefix");
+        String suffix = context.getInitParameter("suffix");
+
+        if (prefix == null) prefix = "/WEB-INF/views/";
+        if (suffix == null) suffix = ".jsp";
+
+        context.setAttribute("viewPrefix", prefix);
+        context.setAttribute("viewSuffix", suffix);
+
         try {
             String packageToScan = context.getInitParameter("packageScan");
             String basePath = context.getRealPath("/WEB-INF/classes");
@@ -31,16 +40,13 @@ public class ContextListener implements ServletContextListener {
                 throw new IllegalStateException("Impossible d'accéder au chemin des classes (basePath est nul).");
             }
 
-            // Appel de notre utilitaire de scan
             FinderAnnotation.chargerRoutes(packageToScan, basePath, listeController, urlMapping);
             
-            // Sauvegarde dans le ServletContext global de Tomcat
             context.setAttribute("urlMapping", urlMapping);
             context.setAttribute("listeController", listeController);
 
         } catch (Exception e) {
-            // On lève une RuntimeException pour stopper net le déploiement de Tomcat en cas de doublon
-            throw new RuntimeException(e.getMessage(), e);
+            context.setAttribute("INIT_ERROR", e.getMessage());
         }
     }
 
