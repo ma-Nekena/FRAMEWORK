@@ -6,6 +6,7 @@ import mg.itu.framework.annotation.controller.UrlMapping;
 import mg.itu.framework.util.Mapping;
 import mg.itu.framework.util.UrlKey;
 import mg.itu.framework.util.HtmlViewHelper; 
+import mg.itu.framework.modelview.ModelAndView;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,13 +20,17 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.util.HashMap;
 import java.util.Map;
 import jakarta.servlet.ServletContext;
+import jakarta.servlet.RequestDispatcher;
 
 public class FrontControllerServlet extends HttpServlet {
 
     private List<String> listeController = new ArrayList<>();
     private Map<UrlKey, Mapping> urlMapping = new HashMap<>();
+    
+    private String viewPrefix;
+    private String viewSuffix;
 
-@SuppressWarnings("unchecked")
+    @SuppressWarnings("unchecked")
     @Override
     public void init() throws ServletException {
         super.init();
@@ -37,6 +42,9 @@ public class FrontControllerServlet extends HttpServlet {
         
         if (this.urlMapping == null) this.urlMapping = new HashMap<>();
         if (this.listeController == null) this.listeController = new ArrayList<>();
+
+        this.viewPrefix = (String) context.getAttribute("viewPrefix");
+        this.viewSuffix = (String) context.getAttribute("viewSuffix");
     }
 
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
@@ -63,65 +71,66 @@ public class FrontControllerServlet extends HttpServlet {
             }
         }
 
-        response.setContentType("text/html;charset=UTF-8");
-        try (PrintWriter out = response.getWriter()) {
-            
-            String lookupPath = pathInfo; 
-            String currentMethod = request.getMethod();
-            UrlKey currentKey = new UrlKey(lookupPath, currentMethod);
+        String lookupPath = pathInfo; 
+        String currentMethod = request.getMethod();
+        UrlKey currentKey = new UrlKey(lookupPath, currentMethod);
 
-            if (pathInfo.equals("/") || pathInfo.isEmpty()) {
-                pathInfo = "";
-            } else {
-                pathInfo = pathInfo.substring(1);
-            }
+        if (urlMapping.containsKey(currentKey)) { 
+            Mapping target = urlMapping.get(currentKey);
 
-            out.println("<h3> URL demandee: " + pathInfo + "[" + currentMethod + "]</h3>");
+            try {
+                Class<?> clazz = Class.forName(target.getClassName());
+                Object controllerInstance = clazz.getDeclaredConstructor().newInstance();
+                java.lang.reflect.Method method = clazz.getDeclaredMethod(target.getMethod());
 
-            out.println("<h2>Liste des Contrôleurs détectés au démarrage :</h2>");
-            if (listeController.isEmpty()) {
-                out.println("<p style='color:red;'>Aucun contrôleur trouvé.</p>");
-            } else {
-                out.println("<ul>");
-                for (String ctrl : listeController) {
-                    out.println("<li>" + ctrl + "</li>");
+                Object result = method.invoke(controllerInstance);
+
+                if (result instanceof ModelAndView) {
+                    ModelAndView mv = (ModelAndView) result;
+                    
+                    Map<String, Object> data = mv.getData();
+                    if (data != null) {
+                        for (Map.Entry<String, Object> entry : data.entrySet()) {
+                            request.setAttribute(entry.getKey(), entry.getValue());
+                        }
+                    }
+
+                    String fullViewPath = this.viewPrefix + mv.getView() + this.viewSuffix;
+
+                    RequestDispatcher dispatcher = request.getRequestDispatcher(fullViewPath);
+                    dispatcher.forward(request, response);
+                    return; 
                 }
-                out.println("</ul>");
-            }
 
-            if (lookupPath.equals("/") || lookupPath.isEmpty()) {
-                out.println("<h3>Tableau de toutes les routes de l'application :</h3>");
-                HtmlViewHelper.afficherTableauRoutes(out, urlMapping);
+                response.setContentType("text/html;charset=UTF-8");
+                try (PrintWriter out = response.getWriter()) {
+                    out.println("<h2 style='color:green;'>✔ Méthode exécutée avec succès mais sans vue associée.</h2>");
+                    out.println("<p>Objet retourné : " + result + "</p>");
+                }
 
-            } else if (urlMapping.containsKey(currentKey)) { 
-                Mapping target = urlMapping.get(currentKey);
-
-                try {
-                    Class<?> clazz = Class.forName(target.getClassName());
-                    Object controllerInstance = clazz.getDeclaredConstructor().newInstance();
-                    java.lang.reflect.Method method = clazz.getDeclaredMethod(target.getMethod());
-
-                    method.invoke(controllerInstance);
-
-                    out.println("<h2 style='color:green;'>✔ URL et méthode HTTP supportées !</h2>");
-                    out.println("<p><strong>URL :</strong> " + lookupPath + "</p>");
-                    out.println("<p><strong>Méthode HTTP :</strong> " + currentMethod + "</p>");
-                    out.println("<p><strong>Classe exécutée :</strong> " + target.getClassName() + "</p>");
-                    out.println("<p><strong>Fonction invoquée :</strong> " + target.getMethod() + "()</p>");
-                } catch (Exception e) {
+            } catch (Exception e) {
+                response.setContentType("text/html;charset=UTF-8");
+                try (PrintWriter out = response.getWriter()) {
                     out.println("<h2 style='color:red;'>❌ Erreur lors de l'exécution de la méthode</h2>");
                     out.println("<pre>");
-
                     if (e instanceof java.lang.reflect.InvocationTargetException && e.getCause() != null) {
-                        out.println("<strong>Cause réelle :</strong> " + e.getCause());
                         e.getCause().printStackTrace(out);
                     } else {
                         e.printStackTrace(out);
                     }
                     out.println("</pre>");
                 }
+            }
+        } else {
 
-            } else {
+            response.setContentType("text/html;charset=UTF-8");
+            try (PrintWriter out = response.getWriter()) {
+                if (pathInfo.equals("/") || pathInfo.isEmpty()) {
+                    pathInfo = "";
+                } else {
+                    pathInfo = pathInfo.substring(1);
+                }
+                out.println("<h3> URL demandee: " + pathInfo + "[" + currentMethod + "]</h3>");
                 out.println("<h2> l'url [" + currentMethod + "] n'est pas supportee pour " + lookupPath + " </h2>");
                 out.println("<p> Voici les url validées : </p>");
                 HtmlViewHelper.afficherTableauRoutes(out, urlMapping);
