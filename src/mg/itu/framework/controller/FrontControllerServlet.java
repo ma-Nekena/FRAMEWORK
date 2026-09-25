@@ -1,26 +1,28 @@
 package mg.itu.framework.controller;
 
-import mg.itu.framework.annotation.controller.Controller;
-import mg.itu.framework.util.PackageScanner;
-import mg.itu.framework.annotation.controller.UrlMapping;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import mg.itu.framework.annotation.controller.Json;
+import mg.itu.framework.modelview.ModelAndView;
+import mg.itu.framework.util.HtmlViewHelper;
 import mg.itu.framework.util.Mapping;
 import mg.itu.framework.util.UrlKey;
-import mg.itu.framework.util.HtmlViewHelper; 
-import mg.itu.framework.modelview.ModelAndView;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.List;
-import java.util.ArrayList;
+import jakarta.servlet.RequestDispatcher;
+import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import jakarta.servlet.ServletContext;
-import jakarta.servlet.RequestDispatcher;
 
 public class FrontControllerServlet extends HttpServlet {
 
@@ -81,9 +83,39 @@ public class FrontControllerServlet extends HttpServlet {
             try {
                 Class<?> clazz = Class.forName(target.getClassName());
                 Object controllerInstance = clazz.getDeclaredConstructor().newInstance();
-                java.lang.reflect.Method method = clazz.getDeclaredMethod(target.getMethod());
+                
+                Method targetMethod = null;
+                for (Method m : clazz.getDeclaredMethods()) {
+                    if (m.getName().equals(target.getMethod())) {
+                        targetMethod = m;
+                        break;
+                    }
+                }
 
-                Object result = method.invoke(controllerInstance);
+                if (targetMethod == null) {
+                    throw new NoSuchMethodException("Méthode " + target.getMethod() + " introuvable dans " + target.getClassName());
+                }
+
+                Object result = targetMethod.invoke(controllerInstance);
+
+                if (targetMethod.isAnnotationPresent(Json.class)) {
+                    response.setContentType("application/json;charset=UTF-8");
+
+                    Json JsonAnnotation = targetMethod.getAnnotation(Json.class);
+
+                    try (PrintWriter out = response.getWriter()) {
+                        if (result == null) {
+                            out.print("{}");
+                        } else if (JsonAnnotation.isJson()) {
+                            out.print((String) result);
+                        } else {
+                            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+                            out.print(gson.toJson(result));
+                        }
+                        out.flush();
+                    }
+                    return; 
+                }
 
                 if (result instanceof ModelAndView) {
                     ModelAndView mv = (ModelAndView) result;
