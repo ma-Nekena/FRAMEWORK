@@ -9,10 +9,11 @@ rm -f mon-framework.jar
 # Par exemple: "/opt/tomcat/lib/servlet-api.jar" ou "/usr/local/Cellar/tomcat/..."
 TOMCAT_SERVLET_API="/Users/rotsy/Documents/TOMCAT/lib/servlet-api.jar" 
 # TOMCAT_SERVLET_API="/home/itu/TOMCAT/lib/servlet-api.jar" 
+GSON_JAR="lib/gson-2.10.1.jar"
 
 echo "Compilation des sources du Framework..."
 find src -name "*.java" > sources.txt
-javac -d bin -cp "$TOMCAT_SERVLET_API" @sources.txt
+javac -d bin -cp "$TOMCAT_SERVLET_API:$GSON_JAR" @sources.txt
 rm sources.txt
 
 if [ $? -eq 0 ]; then
