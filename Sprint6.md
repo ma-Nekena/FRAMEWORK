@@ -1,13 +1,13 @@
 ##  Annotation
-    [] creation de l'annotation @RestApi
+    [OK] creation de l'annotation @RestApi
 
 ## FrontControllerServlet
-    [] Verification si la methode est annotee
+    [OK] Verification si la methode est annotee
         si oui
-            - [] definir le header http de reponse (response.setContentType("application/json; charset=UTF-8"))
-            - [] convertir les resultat de la methode en chaine de caractere json
-            - [] ecriver directement dans la reponse avec response.getwriter().print()
+            - [OK] definir le header http de reponse (response.setContentType("application/json; charset=UTF-8"))
+            - [OK] convertir les resultat de la methode en chaine de caractere json
+            - [OK] ecriver directement dans la reponse avec response.getwriter().print()
 
         sinon,
-            - [] consevoir le comportement habituel
+            - [OK] consevoir le comportement habituel
 
