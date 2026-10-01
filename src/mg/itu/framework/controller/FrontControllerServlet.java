@@ -1,5 +1,7 @@
 package mg.itu.framework.controller;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import mg.itu.framework.annotation.controller.Json;
 import mg.itu.framework.modelview.ModelAndView;
 import mg.itu.framework.util.HtmlViewHelper;
@@ -17,6 +19,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -94,8 +97,59 @@ public class FrontControllerServlet extends HttpServlet {
                     throw new NoSuchMethodException("Méthode " + target.getMethod() + " introuvable dans " + target.getClassName());
                 }
 
+                Parameter[] parameters = targetMethod.getParameters();
+                Object[] args = new Object[parameters.length];
+
+                for(int i = 0; i < parameters.length; i++){
+                    Parameter param = parameters[i];
+                    String paramName = param.getName();
+                    String paramValue = request.getParameter(paramName);
+
+                    if(paramValue != null && !paramValue.trim().isEmpty()){
+                        Class<?> paramType = param.getType();
+
+                        if(paramType == String.class){
+                            args[i] = paramValue;
+                        }else if(paramType == int.class || paramType == Integer.class){
+                            args[i] = Integer.parseInt(paramValue);
+                        }else if(paramType == double.class || paramType == Double.class){
+                            args[i] = Double.parseDouble(paramValue);
+                        }else if(paramType == boolean.class || paramType == Boolean.class){
+                            args[i] = Boolean.parseBoolean(paramValue);
+                        }else if(paramType == float.class || paramType == Float.class){
+                            args[i] = Float.parseFloat(paramValue);
+                        }else if(paramType == long.class || paramType == Long.class){
+                            args[i] = Long.parseLong(paramValue);
+                        }
+                    }else{
+                        if(param.getType().isPrimitive()){
+                            if(param.getType() == boolean.class) args[i] = false;
+                            else args[i] = 0;
+                        }else{
+                            args[i] = null;
+                        }
+                    }
+                } 
+
                 Object result = targetMethod.invoke(controllerInstance);
 
+                if (targetMethod.isAnnotationPresent(Json.class)) {
+                    response.setContentType("application/json;charset=UTF-8");
+
+                    Json JsonAnnotation = targetMethod.getAnnotation(Json.class);
+
+                    try (PrintWriter out = response.getWriter()) {
+                        if (result == null) {
+                            out.print("{}");
+                        } else if (JsonAnnotation.isJson()) {
+                            out.print((String) result);
+                        } else {
+                            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+                            out.print(gson.toJson(result));
+                        }
+                        out.flush();
+                    }
+                    return; 
                 }
 
                 if (result instanceof ModelAndView) {
