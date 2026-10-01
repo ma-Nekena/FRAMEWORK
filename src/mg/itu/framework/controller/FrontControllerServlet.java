@@ -1,7 +1,5 @@
 package mg.itu.framework.controller;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import mg.itu.framework.annotation.controller.Json;
 import mg.itu.framework.modelview.ModelAndView;
 import mg.itu.framework.util.HtmlViewHelper;
@@ -98,23 +96,6 @@ public class FrontControllerServlet extends HttpServlet {
 
                 Object result = targetMethod.invoke(controllerInstance);
 
-                if (targetMethod.isAnnotationPresent(Json.class)) {
-                    response.setContentType("application/json;charset=UTF-8");
-
-                    Json JsonAnnotation = targetMethod.getAnnotation(Json.class);
-
-                    try (PrintWriter out = response.getWriter()) {
-                        if (result == null) {
-                            out.print("{}");
-                        } else if (JsonAnnotation.isJson()) {
-                            out.print((String) result);
-                        } else {
-                            Gson gson = new GsonBuilder().setPrettyPrinting().create();
-                            out.print(gson.toJson(result));
-                        }
-                        out.flush();
-                    }
-                    return; 
                 }
 
                 if (result instanceof ModelAndView) {
