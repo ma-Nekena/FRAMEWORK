@@ -131,7 +131,7 @@ public class FrontControllerServlet extends HttpServlet {
                     }
                 } 
 
-                Object result = targetMethod.invoke(controllerInstance);
+                Object result = targetMethod.invoke(controllerInstance, args);
 
                 if (targetMethod.isAnnotationPresent(Json.class)) {
                     response.setContentType("application/json;charset=UTF-8");
