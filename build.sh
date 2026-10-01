@@ -13,7 +13,7 @@ GSON_JAR="lib/gson-2.10.1.jar"
 
 echo "Compilation des sources du Framework..."
 find src -name "*.java" > sources.txt
-javac -d bin -cp "$TOMCAT_SERVLET_API:$GSON_JAR" @sources.txt
+javac -parameters -d bin -cp "$TOMCAT_SERVLET_API:$GSON_JAR" @sources.txt
 rm sources.txt
 
 if [ $? -eq 0 ]; then

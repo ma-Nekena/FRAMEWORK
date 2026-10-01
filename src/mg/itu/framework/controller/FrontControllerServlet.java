@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -95,6 +96,40 @@ public class FrontControllerServlet extends HttpServlet {
                 if (targetMethod == null) {
                     throw new NoSuchMethodException("Méthode " + target.getMethod() + " introuvable dans " + target.getClassName());
                 }
+
+                Parameter[] parameters = targetMethod.getParameters();
+                Object[] args = new Object[parameters.length];
+
+                for(int i = 0; i < parameters.length; i++){
+                    Parameter param = parameters[i];
+                    String paramName = param.getName();
+                    String paramValue = request.getParameter(paramName);
+
+                    if(paramValue != null && !paramValue.trim().isEmpty()){
+                        Class<?> paramType = param.getType();
+
+                        if(paramType == String.class){
+                            args[i] = paramValue;
+                        }else if(paramType == int.class || paramType == Integer.class){
+                            args[i] = Integer.parseInt(paramValue);
+                        }else if(paramType == double.class || paramType == Double.class){
+                            args[i] = Double.parseDouble(paramValue);
+                        }else if(paramType == boolean.class || paramType == Boolean.class){
+                            args[i] = Boolean.parseBoolean(paramValue);
+                        }else if(paramType == float.class || paramType == Float.class){
+                            args[i] = Float.parseFloat(paramValue);
+                        }else if(paramType == long.class || paramType == Long.class){
+                            args[i] = Long.parseLong(paramValue);
+                        }
+                    }else{
+                        if(param.getType().isPrimitive()){
+                            if(param.getType() == boolean.class) args[i] = false;
+                            else args[i] = 0;
+                        }else{
+                            args[i] = null;
+                        }
+                    }
+                } 
 
                 Object result = targetMethod.invoke(controllerInstance);
 
