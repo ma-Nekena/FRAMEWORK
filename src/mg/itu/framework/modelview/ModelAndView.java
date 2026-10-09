@@ -35,4 +35,8 @@ public class ModelAndView {
     public void setAttribut(String key, Object value) {
         this.data.put(key, value);
     }
+
+    public void addObject(String nom, Object valeur){
+        data.put(nom, valeur);
+    }
 }
