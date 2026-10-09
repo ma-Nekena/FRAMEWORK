@@ -100,36 +100,69 @@ public class FrontControllerServlet extends HttpServlet {
                 Parameter[] parameters = targetMethod.getParameters();
                 Object[] args = new Object[parameters.length];
 
-                for(int i = 0; i < parameters.length; i++){
+                for (int i = 0; i < parameters.length; i++) {
+
                     Parameter param = parameters[i];
+                    Class<?> paramType = param.getType();
                     String paramName = param.getName();
-                    String paramValue = request.getParameter(paramName);
 
-                    if(paramValue != null && !paramValue.trim().isEmpty()){
-                        Class<?> paramType = param.getType();
+                    if (paramType == String.class ||
+                        paramType == int.class || paramType == Integer.class ||
+                        paramType == double.class || paramType == Double.class ||
+                        paramType == boolean.class || paramType == Boolean.class ||
+                        paramType == float.class || paramType == Float.class ||
+                        paramType == long.class || paramType == Long.class) {
 
-                        if(paramType == String.class){
-                            args[i] = paramValue;
-                        }else if(paramType == int.class || paramType == Integer.class){
-                            args[i] = Integer.parseInt(paramValue);
-                        }else if(paramType == double.class || paramType == Double.class){
-                            args[i] = Double.parseDouble(paramValue);
-                        }else if(paramType == boolean.class || paramType == Boolean.class){
-                            args[i] = Boolean.parseBoolean(paramValue);
-                        }else if(paramType == float.class || paramType == Float.class){
-                            args[i] = Float.parseFloat(paramValue);
-                        }else if(paramType == long.class || paramType == Long.class){
-                            args[i] = Long.parseLong(paramValue);
+                        String paramValue = request.getParameter(paramName);
+
+                        if (paramValue != null && !paramValue.trim().isEmpty()) {
+
+                            if (paramType == String.class) {
+                                args[i] = paramValue;
+
+                            } else if (paramType == int.class ||
+                                    paramType == Integer.class) {
+                                args[i] = Integer.parseInt(paramValue);
+
+                            } else if (paramType == double.class ||
+                                    paramType == Double.class) {
+                                args[i] = Double.parseDouble(paramValue);
+
+                            } else if (paramType == boolean.class ||
+                                    paramType == Boolean.class) {
+                                args[i] = Boolean.parseBoolean(paramValue);
+
+                            } else if (paramType == float.class ||
+                                    paramType == Float.class) {
+                                args[i] = Float.parseFloat(paramValue);
+
+                            } else if (paramType == long.class ||
+                                    paramType == Long.class) {
+                                args[i] = Long.parseLong(paramValue);
+                            }
+
+                        } else {
+
+                            if (paramType == boolean.class) {
+                                args[i] = false;
+
+                            } else if (paramType.isPrimitive()) {
+                                args[i] = 0;
+
+                            } else {
+                                args[i] = null;
+                            }
                         }
-                    }else{
-                        if(param.getType().isPrimitive()){
-                            if(param.getType() == boolean.class) args[i] = false;
-                            else args[i] = 0;
-                        }else{
-                            args[i] = null;
-                        }
+
                     }
-                } 
+
+                    else {
+                        throw new IllegalArgumentException(
+                            "Erreur : le paramètre " + paramName
+                            + " est un objet ou un type non pris en charge."
+                        );
+                    }
+                }
 
                 Object result = targetMethod.invoke(controllerInstance, args);
 
@@ -217,3 +250,5 @@ public class FrontControllerServlet extends HttpServlet {
         processRequest(request, response);
     }
 }
+
+
