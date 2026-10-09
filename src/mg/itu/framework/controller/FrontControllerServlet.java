@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.lang.reflect.Field;
 
 public class FrontControllerServlet extends HttpServlet {
 
@@ -157,13 +158,65 @@ public class FrontControllerServlet extends HttpServlet {
                     }
 
                     else {
-                        throw new IllegalArgumentException(
-                            "Erreur : le paramètre " + paramName
-                            + " est un objet ou un type non pris en charge."
-                        );
+                        try {
+
+                            Object modelInstance = paramType.getDeclaredConstructor().newInstance();
+
+                            Field[] fields = paramType.getDeclaredFields();
+
+                            for (Field field : fields) {
+
+                                String fieldName = field.getName();
+
+                                String requestValue = request.getParameter(fieldName);
+
+                                if (requestValue != null &&
+                                    !requestValue.trim().isEmpty()) {
+
+                                    Class<?> fieldType = field.getType();
+
+                                    Object convertedValue = null;
+
+                                    if (fieldType == String.class) {
+                                        convertedValue = requestValue;
+
+                                    } else if (fieldType == int.class ||
+                                            fieldType == Integer.class) {
+                                        convertedValue = Integer.parseInt(requestValue);
+
+                                    } else if (fieldType == double.class ||
+                                            fieldType == Double.class) {
+                                        convertedValue = Double.parseDouble(requestValue);
+
+                                    } else if (fieldType == boolean.class ||
+                                            fieldType == Boolean.class) {
+                                        convertedValue = Boolean.parseBoolean(requestValue);
+
+                                    } else if (fieldType == float.class ||
+                                            fieldType == Float.class) {
+                                        convertedValue = Float.parseFloat(requestValue);
+
+                                    } else if (fieldType == long.class ||
+                                            fieldType == Long.class) {
+                                        convertedValue = Long.parseLong(requestValue);
+                                    }
+
+                                    field.setAccessible(true);
+                                    field.set(modelInstance, convertedValue);
+                                }
+                            }
+
+                            args[i] = modelInstance;
+
+                        } catch (Exception e) {
+
+                            throw new ServletException(
+                                    "Erreur lors du binding de l'objet : "
+                                    + e.getMessage()
+                            );
+                        }
                     }
                 }
-
                 Object result = targetMethod.invoke(controllerInstance, args);
 
                 if (targetMethod.isAnnotationPresent(Json.class)) {
