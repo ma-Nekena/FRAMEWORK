@@ -18,13 +18,13 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.lang.reflect.Field;
 
 public class FrontControllerServlet extends HttpServlet {
 
@@ -98,6 +98,7 @@ public class FrontControllerServlet extends HttpServlet {
                     throw new NoSuchMethodException("Méthode " + target.getMethod() + " introuvable dans " + target.getClassName());
                 }
 
+                                                
                 Parameter[] parameters = targetMethod.getParameters();
                 Object[] args = new Object[parameters.length];
 
@@ -107,117 +108,31 @@ public class FrontControllerServlet extends HttpServlet {
                     Class<?> paramType = param.getType();
                     String paramName = param.getName();
 
-                    if (paramType == String.class ||
-                        paramType == int.class || paramType == Integer.class ||
-                        paramType == double.class || paramType == Double.class ||
-                        paramType == boolean.class || paramType == Boolean.class ||
-                        paramType == float.class || paramType == Float.class ||
-                        paramType == long.class || paramType == Long.class) {
-
+                    if (isSimpleType(paramType)) {
                         String paramValue = request.getParameter(paramName);
+                        args[i] = castSimpleType(paramValue, paramType);
 
-                        if (paramValue != null && !paramValue.trim().isEmpty()) {
-
-                            if (paramType == String.class) {
-                                args[i] = paramValue;
-
-                            } else if (paramType == int.class ||
-                                    paramType == Integer.class) {
-                                args[i] = Integer.parseInt(paramValue);
-
-                            } else if (paramType == double.class ||
-                                    paramType == Double.class) {
-                                args[i] = Double.parseDouble(paramValue);
-
-                            } else if (paramType == boolean.class ||
-                                    paramType == Boolean.class) {
-                                args[i] = Boolean.parseBoolean(paramValue);
-
-                            } else if (paramType == float.class ||
-                                    paramType == Float.class) {
-                                args[i] = Float.parseFloat(paramValue);
-
-                            } else if (paramType == long.class ||
-                                    paramType == Long.class) {
-                                args[i] = Long.parseLong(paramValue);
-                            }
-
-                        } else {
-
-                            if (paramType == boolean.class) {
-                                args[i] = false;
-
-                            } else if (paramType.isPrimitive()) {
-                                args[i] = 0;
-
-                            } else {
-                                args[i] = null;
-                            }
-                        }
-
-                    }
-
-                    else {
+                    } else {
                         try {
-
-                            Object modelInstance = paramType.getDeclaredConstructor().newInstance();
-
-                            Field[] fields = paramType.getDeclaredFields();
-
-                            for (Field field : fields) {
-
-                                String fieldName = field.getName();
-
-                                String requestValue = request.getParameter(fieldName);
-
-                                if (requestValue != null &&
-                                    !requestValue.trim().isEmpty()) {
-
-                                    Class<?> fieldType = field.getType();
-
-                                    Object convertedValue = null;
-
-                                    if (fieldType == String.class) {
-                                        convertedValue = requestValue;
-
-                                    } else if (fieldType == int.class ||
-                                            fieldType == Integer.class) {
-                                        convertedValue = Integer.parseInt(requestValue);
-
-                                    } else if (fieldType == double.class ||
-                                            fieldType == Double.class) {
-                                        convertedValue = Double.parseDouble(requestValue);
-
-                                    } else if (fieldType == boolean.class ||
-                                            fieldType == Boolean.class) {
-                                        convertedValue = Boolean.parseBoolean(requestValue);
-
-                                    } else if (fieldType == float.class ||
-                                            fieldType == Float.class) {
-                                        convertedValue = Float.parseFloat(requestValue);
-
-                                    } else if (fieldType == long.class ||
-                                            fieldType == Long.class) {
-                                        convertedValue = Long.parseLong(requestValue);
-                                    }
-
-                                    field.setAccessible(true);
-                                    field.set(modelInstance, convertedValue);
-                                }
-                            }
-
-                            args[i] = modelInstance;
+                            args[i] = populateObject(
+                                paramType,
+                                request,
+                                ""
+                            );
 
                         } catch (Exception e) {
 
                             throw new ServletException(
-                                    "Erreur lors du binding de l'objet : "
-                                    + e.getMessage()
+                                "Erreur lors du binding de l'objet "
+                                + paramType.getName(),
+                                e
                             );
                         }
                     }
                 }
+
                 Object result = targetMethod.invoke(controllerInstance, args);
+
 
                 if (targetMethod.isAnnotationPresent(Json.class)) {
                     response.setContentType("application/json;charset=UTF-8");
@@ -291,6 +206,117 @@ public class FrontControllerServlet extends HttpServlet {
         }
     }
 
+    private boolean isSimpleType(Class<?> type) {
+
+        return type == String.class
+                || type == int.class
+                || type == Integer.class
+                || type == double.class
+                || type == Double.class
+                || type == boolean.class
+                || type == Boolean.class
+                || type == float.class
+                || type == Float.class
+                || type == long.class
+                || type == Long.class;
+    }
+
+    private Object castSimpleType(String value, Class<?> type) {
+        if (value == null || value.trim().isEmpty()) {
+            if (type == boolean.class) {
+                return false;
+            }
+            if (type == int.class) {
+                return 0;
+            }
+            if (type == double.class) {
+                return 0.0;
+            }
+            if (type == float.class) {
+                return 0.0f;
+            }
+            if (type == long.class) {
+                return 0L;
+            }
+            return null;
+        }
+        if (type == String.class) {
+            return value;
+        }
+
+        if (type == int.class || type == Integer.class) {
+            return Integer.parseInt(value);
+        }
+
+        if (type == double.class || type == Double.class) {
+            return Double.parseDouble(value);
+        }
+
+        if (type == boolean.class || type == Boolean.class) {
+            return Boolean.parseBoolean(value);
+        }
+
+        if (type == float.class || type == Float.class) {
+            return Float.parseFloat(value);
+        }
+
+        if (type == long.class || type == Long.class) {
+            return Long.parseLong(value);
+        }
+
+        throw new IllegalArgumentException(
+            "Type non pris en charge : " + type.getName()
+        );
+    }
+
+    private Object populateObject(
+            Class<?> clazz,
+            HttpServletRequest request,
+            String prefix) throws Exception {
+
+        Object instance = clazz.getDeclaredConstructor().newInstance();
+
+        Field[] fields = clazz.getDeclaredFields();
+        for (Field field : fields) {
+            field.setAccessible(true);
+            Class<?> fieldType = field.getType();
+            String fieldName = field.getName();
+
+            String paramKey;
+
+            if (prefix.isEmpty()) {
+                paramKey = fieldName;
+            } else {
+                paramKey = prefix + "." + fieldName;
+            }
+
+            if (isSimpleType(fieldType)) {
+
+                String requestValue = request.getParameter(paramKey);
+
+                Object convertedValue = castSimpleType(
+                    requestValue,
+                    fieldType
+                );
+                if (convertedValue != null
+                        || fieldType.isPrimitive()) {
+
+                    field.set(instance, convertedValue);
+                }
+
+            } else {
+                Object childObject = populateObject(
+                    fieldType,
+                    request,
+                    paramKey
+                );
+                field.set(instance, childObject);
+            }
+        }
+
+        return instance;
+    }
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -303,5 +329,3 @@ public class FrontControllerServlet extends HttpServlet {
         processRequest(request, response);
     }
 }
-
-
