@@ -7,6 +7,7 @@ import mg.itu.framework.modelview.ModelAndView;
 import mg.itu.framework.util.HtmlViewHelper;
 import mg.itu.framework.util.Mapping;
 import mg.itu.framework.util.UrlKey;
+import mg.itu.framework.util.FileData;
 
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletContext;
@@ -14,7 +15,9 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Part;
 
+import java.io.InputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -26,6 +29,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import jakarta.servlet.annotation.MultipartConfig;
+import jakarta.servlet.annotation.WebServlet;
+
+@MultipartConfig
 public class FrontControllerServlet extends HttpServlet {
 
     private List<String> listeController = new ArrayList<>();
@@ -269,53 +276,60 @@ public class FrontControllerServlet extends HttpServlet {
         );
     }
 
-    private Object populateObject(
-            Class<?> clazz,
-            HttpServletRequest request,
-            String prefix) throws Exception {
-
+    private Object populateObject(Class<?> clazz, HttpServletRequest request, String prefix) throws Exception {
         Object instance = clazz.getDeclaredConstructor().newInstance();
-
         Field[] fields = clazz.getDeclaredFields();
+
         for (Field field : fields) {
             field.setAccessible(true);
             Class<?> fieldType = field.getType();
             String fieldName = field.getName();
 
-            String paramKey;
-
-            if (prefix.isEmpty()) {
-                paramKey = fieldName;
-            } else {
-                paramKey = prefix + "." + fieldName;
-            }
+            String paramKey = prefix.isEmpty() ? fieldName : prefix + "." + fieldName;
 
             if (isSimpleType(fieldType)) {
-
                 String requestValue = request.getParameter(paramKey);
-
-                Object convertedValue = castSimpleType(
-                    requestValue,
-                    fieldType
-                );
-                if (convertedValue != null
-                        || fieldType.isPrimitive()) {
-
+                if (requestValue != null && !requestValue.trim().isEmpty()) {
+                    Object convertedValue = castSimpleType(requestValue, fieldType);
                     field.set(instance, convertedValue);
                 }
+            } 
 
-            } else {
-                Object childObject = populateObject(
-                    fieldType,
-                    request,
-                    paramKey
-                );
+            else if (fieldType == FileData.class) {
+                try {
+                    Part part = request.getPart(paramKey);
+                    if (part != null && part.getSize() > 0) {
+
+                        String fileName = part.getSubmittedFileName();
+                        
+                        String extension = "";
+                        if (fileName != null && fileName.contains(".")) {
+                            extension = fileName.substring(fileName.lastIndexOf(".") + 1);
+                        }
+
+                        InputStream is = part.getInputStream();
+                        byte[] bytes = is.readAllBytes();
+
+                        FileData fileData = new FileData(fileName, extension, bytes);
+
+                        String uploadFolder = "/Users/rotsy/Documents/S5/M.NAINA/TEST-FRAMEWORK/uploads/";
+                        fileData.writeTo(uploadFolder); 
+
+                        field.set(instance, fileData);
+                    }
+                } catch (Exception e) {
+
+                }
+            } 
+            else {
+                Object childObject = populateObject(fieldType, request, paramKey);
                 field.set(instance, childObject);
             }
         }
 
         return instance;
     }
+
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
