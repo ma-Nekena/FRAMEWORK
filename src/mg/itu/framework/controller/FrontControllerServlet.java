@@ -8,6 +8,7 @@ import mg.itu.framework.util.HtmlViewHelper;
 import mg.itu.framework.util.Mapping;
 import mg.itu.framework.util.UrlKey;
 import mg.itu.framework.util.FileData;
+import mg.itu.framework.util.MySession;
 
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletContext;
@@ -16,6 +17,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Part;
+import jakarta.servlet.http.HttpSession;
 
 import java.io.InputStream;
 import java.io.File;
@@ -37,6 +39,8 @@ public class FrontControllerServlet extends HttpServlet {
 
     private List<String> listeController = new ArrayList<>();
     private Map<UrlKey, Mapping> urlMapping = new HashMap<>();
+
+    private Map<Class<?>, Object> controllers = new HashMap<>();
     
     private String viewPrefix;
     private String viewSuffix;
@@ -91,7 +95,12 @@ public class FrontControllerServlet extends HttpServlet {
 
             try {
                 Class<?> clazz = Class.forName(target.getClassName());
-                Object controllerInstance = clazz.getDeclaredConstructor().newInstance();
+
+                Object controllerInstance = controllers.get(clazz);
+                    if (controllerInstance == null) {
+                        controllerInstance = clazz.getDeclaredConstructor().newInstance();
+                        controllers.put(clazz, controllerInstance);
+                    }
                 
                 Method targetMethod = null;
                 for (Method m : clazz.getDeclaredMethods()) {
@@ -109,6 +118,8 @@ public class FrontControllerServlet extends HttpServlet {
                 Parameter[] parameters = targetMethod.getParameters();
                 Object[] args = new Object[parameters.length];
 
+                MySession mySessionInstance = null;
+
                 for (int i = 0; i < parameters.length; i++) {
 
                     Parameter param = parameters[i];
@@ -119,7 +130,18 @@ public class FrontControllerServlet extends HttpServlet {
                         String paramValue = request.getParameter(paramName);
                         args[i] = castSimpleType(paramValue, paramType);
 
-                    } else {
+                    } 
+                    else if (paramType == MySession.class) {
+                        HttpSession httpSession = request.getSession();
+                        mySessionInstance = new MySession();
+                        
+                        mySessionInstance.populateFromHttpSession(httpSession);
+                        
+                        args[i] = mySessionInstance;
+                    }
+                    
+                    
+                    else {
                         try {
                             args[i] = populateObject(
                                 paramType,
@@ -140,6 +162,10 @@ public class FrontControllerServlet extends HttpServlet {
 
                 Object result = targetMethod.invoke(controllerInstance, args);
 
+                if (mySessionInstance != null) {
+                    HttpSession httpSession = request.getSession();
+                    mySessionInstance.syncToHttpSession(httpSession);
+                }
 
                 if (targetMethod.isAnnotationPresent(Json.class)) {
                     response.setContentType("application/json;charset=UTF-8");
