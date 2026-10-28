@@ -2,6 +2,8 @@ package mg.itu.framework.controller;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+
+import mg.itu.framework.annotation.controller.Auth;
 import mg.itu.framework.annotation.controller.Json;
 import mg.itu.framework.modelview.ModelAndView;
 import mg.itu.framework.util.HtmlViewHelper;
@@ -45,11 +47,19 @@ public class FrontControllerServlet extends HttpServlet {
     private String viewPrefix;
     private String viewSuffix;
 
+    private String authSessionKey;
+
     @SuppressWarnings("unchecked")
     @Override
     public void init() throws ServletException {
         super.init();
         
+        this.authSessionKey = getInitParameter("authSessionKey");
+        if(this.authSessionKey == null || this.authSessionKey.trim().isEmpty()){
+            this.authSessionKey = "userid";
+        }
+
+
         ServletContext context = getServletContext();
         
         this.urlMapping = (Map<UrlKey, Mapping>) context.getAttribute("urlMapping");
@@ -112,6 +122,18 @@ public class FrontControllerServlet extends HttpServlet {
 
                 if (targetMethod == null) {
                     throw new NoSuchMethodException("Méthode " + target.getMethod() + " introuvable dans " + target.getClassName());
+                }
+
+                if(targetMethod.isAnnotationPresent(Auth.class)){
+                    HttpSession sessionCheck = request.getSession(false);
+                    Object authValue = (sessionCheck != null) ? sessionCheck.getAttribute(authSessionKey) : null;
+
+                    if(authValue == null){
+                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "vous devez etre connecte");
+                        return;
+                    }
+
+
                 }
 
                                                 
@@ -199,6 +221,11 @@ public class FrontControllerServlet extends HttpServlet {
                     String fullViewPath = this.viewPrefix + mv.getView() + this.viewSuffix;
 
                     RequestDispatcher dispatcher = request.getRequestDispatcher(fullViewPath);
+
+                    response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate"); // HTTP 1.1
+                    response.setHeader("Pragma", "no-cache"); // HTTP 1.0
+                    response.setDateHeader("Expires", 0); // Proxies
+
                     dispatcher.forward(request, response);
                     return; 
                 }
