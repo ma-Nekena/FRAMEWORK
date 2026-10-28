@@ -48,6 +48,7 @@ public class FrontControllerServlet extends HttpServlet {
     private String viewSuffix;
 
     private String authSessionKey;
+    private String authRoleSessionKey;
 
     @SuppressWarnings("unchecked")
     @Override
@@ -59,6 +60,10 @@ public class FrontControllerServlet extends HttpServlet {
             this.authSessionKey = "userid";
         }
 
+        this.authRoleSessionKey = getInitParameter("authRoleSessionKey");
+        if(this.authRoleSessionKey == null || this.authRoleSessionKey.trim().isEmpty()){
+            this.authRoleSessionKey = "role";
+        }
 
         ServletContext context = getServletContext();
         
@@ -133,6 +138,28 @@ public class FrontControllerServlet extends HttpServlet {
                         return;
                     }
 
+                    Auth authAnnotation = targetMethod.getAnnotation(Auth.class);
+                    String[] requiredRoles = authAnnotation.role();
+
+                    if (requiredRoles.length > 0) {
+
+                        Object userRoleObj = (sessionCheck != null) ? sessionCheck.getAttribute(authRoleSessionKey) : null;
+                        String userRole = (userRoleObj != null) ? userRoleObj.toString() : "";
+
+                        boolean isAuthorized = false;
+                            for (String role : requiredRoles) {
+                                if (role.equalsIgnoreCase(userRole)) {
+                                    isAuthorized = true;
+                                    break;
+                                }
+                            }
+
+                            if (!isAuthorized) {
+                                request.setAttribute("error", "Accès refusé : Votre rôle (" + userRole + ") ne vous permet pas d'accéder à cette ressource.");
+                                request.getRequestDispatcher("/WEB-INF/views/dashboard.jsp").forward(request, response);
+                                return;
+                            }
+                    }
 
                 }
 
@@ -222,9 +249,9 @@ public class FrontControllerServlet extends HttpServlet {
 
                     RequestDispatcher dispatcher = request.getRequestDispatcher(fullViewPath);
 
-                    response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate"); // HTTP 1.1
-                    response.setHeader("Pragma", "no-cache"); // HTTP 1.0
-                    response.setDateHeader("Expires", 0); // Proxies
+                    response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate"); 
+                    response.setHeader("Pragma", "no-cache"); 
+                    response.setDateHeader("Expires", 0); 
 
                     dispatcher.forward(request, response);
                     return; 
