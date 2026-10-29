@@ -392,7 +392,7 @@ public class FrontControllerServlet extends HttpServlet {
 
                         FileData fileData = new FileData(fileName, extension, bytes);
 
-                        String uploadFolder = "/Users/rotsy/Documents/S5/M.NAINA/TEST-FRAMEWORK/uploads/";
+                        String uploadFolder = "/home/nekena/Documents/S5/M.NAINA/SPRINT/TEST-FRAMEWORK/uploads/";
                         fileData.writeTo(uploadFolder); 
 
                         field.set(instance, fileData);
