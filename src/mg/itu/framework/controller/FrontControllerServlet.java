@@ -39,6 +39,8 @@ import jakarta.servlet.annotation.WebServlet;
 @MultipartConfig
 public class FrontControllerServlet extends HttpServlet {
 
+    private Map<Class<?>, Object> controllerInstances = new HashMap<>();
+
     private List<String> listeController = new ArrayList<>();
     private Map<UrlKey, Mapping> urlMapping = new HashMap<>();
 
@@ -109,12 +111,14 @@ public class FrontControllerServlet extends HttpServlet {
             Mapping target = urlMapping.get(currentKey);
 
             try {
+                
                 Class<?> clazz = Class.forName(target.getClassName());
 
                 Object controllerInstance = controllers.get(clazz);
                     if (controllerInstance == null) {
                         controllerInstance = clazz.getDeclaredConstructor().newInstance();
                         controllers.put(clazz, controllerInstance);
+                        System.out.println("singleton creation de l unique instance pour: " + clazz.getName());
                     }
                 
                 Method targetMethod = null;
