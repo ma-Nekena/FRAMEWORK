@@ -21,11 +21,13 @@ public class PackageScanner {
                 String pureClassName = file.getName().substring(0, file.getName().length() - 6);
                 String className = packageName.isEmpty() ? pureClassName : packageName + "." + pureClassName;
                 
-                try {
-                    Class<?> cls = Class.forName(className);
-                    classes.add(cls);
-                } catch (Throwable t) {
-                }
+            try {
+                Class<?> cls = Class.forName(className);
+                classes.add(cls);
+            } catch (Throwable t) {
+                System.out.println("Erreur lors du chargement de : " + className);
+                t.printStackTrace();
+            }
             }
         }
         return classes;
